@@ -58,6 +58,7 @@ import uuid as _uuid
 import subprocess
 import platform
 import os
+import time
 from typing import Any, List, Tuple, Type
 
 # This used to be pkg_resources.require('streamlit') but it would cause
@@ -93,6 +94,7 @@ import traceback as _traceback
 import types as _types
 import json as _json
 import numpy as _np
+from urllib.parse import parse_qs, urlencode
 
 from streamlit import code_util as _code_util
 from streamlit import env_util as _env_util
@@ -129,6 +131,9 @@ _config.on_config_parsed(_set_log_level, True)
 
 _main = _DeltaGenerator(container=_BlockPath_pb2.BlockPath.MAIN)
 sidebar = _DeltaGenerator(container=_BlockPath_pb2.BlockPath.SIDEBAR)
+
+from streamlit.proto.ForwardMsg_pb2 import ForwardMsg
+from streamlit.server.Server import Server
 
 # DeltaGenerator methods:
 
@@ -595,6 +600,79 @@ def _transparent_write(*args):
     if len(args) == 1:
         return args[0]
     return args
+
+
+def experimental_get_query_string():
+    """Return the query strings that is currently showing in the browser URL bar.
+
+    Returns
+    -------
+    dict
+      The current query strings as a dict
+    Example
+    -------
+    >>> st.experimental_get_query_string()
+    .. output::
+       { "checkbox1" = "true" }
+    """
+    ctx = _get_report_ctx()
+    session_infos = Server.get_current()._session_info_by_id
+    _MAX_RETRIES = 3
+    _RETRY_WAIT_SECS = 0.2
+    for socket_handler, session_info in session_infos.items():
+        if session_info.session.enqueue == ctx.enqueue:
+            session = session_info.session
+            # Add retry in case query string message are not processed
+            for i in range(_MAX_RETRIES):
+                try:
+                    if (
+                        not hasattr(session, "query_string")
+                        or session.query_string is None
+                    ):
+                        raise StreamlitAPIException(
+                            "Current app's query strings are not initialized on server."
+                        )
+                    else:
+                        return session.query_string
+                except StreamlitAPIException as e:
+                    if i >= _MAX_RETRIES - 1:
+                        _LOGGER.warning(
+                            _textwrap.dedent(
+                            """
+                            Current app's query strings are not initialized on server. Sending a rerun script request
+                            """
+                            ),
+                            _MAX_RETRIES,
+                        )
+                        # this will be trigger only once before query_string is monkey-patched to report session
+                        session.handle_rerun_script_request()
+                        raise e
+                    time.sleep(_RETRY_WAIT_SECS)
+
+
+def experimental_set_query_string(query_string_dict):
+    """Set the query string in currently browser URL bar and update the query string value in current ReportSession.
+
+    Example
+    -------
+    >>> st.experimental_set_query_string({"checkbox1":"true", "multi-select1":"2"}})
+    .. output::
+       (User's browser URL bar is updated with query string above)
+    """
+    if not isinstance(query_string_dict, dict):
+        raise StreamlitAPIException(
+            "Error setting query strings for the browser. Please use the correct dict-format like {'checkbox1':'true'}"
+        )
+    parsed_query_string = urlencode(query_string_dict)
+    ctx = _get_report_ctx()
+    session_infos = Server.get_current()._session_info_by_id
+    for socket_handler, session_info in session_infos.items():
+        if session_info.session.enqueue == ctx.enqueue:
+            session = session_info.session
+            newQueryStringMsg = ForwardMsg()
+            newQueryStringMsg.set_query_string = parsed_query_string
+            session._report.enqueue(newQueryStringMsg)
+            session.query_string = query_string_dict
 
 
 # We want to show a warning when the user runs a Streamlit script without
