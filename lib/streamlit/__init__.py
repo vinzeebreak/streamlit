@@ -638,7 +638,7 @@ def experimental_get_query_string():
                     if i >= _MAX_RETRIES - 1:
                         _LOGGER.warning(
                             _textwrap.dedent(
-                            """
+                                """
                             Current app's query strings are not initialized on server. Sending a rerun script request
                             """
                             ),
