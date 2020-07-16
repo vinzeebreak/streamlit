@@ -2720,7 +2720,9 @@ class DeltaGenerator(object):
 
         """
         # Set value default.
-        if value is None:
+        if value == (None, None):
+            value = datetime.now().date(), datetime.now().date()
+        elif value is None:
             value = datetime.now().date()
 
         single_value = isinstance(value, (date, datetime))
