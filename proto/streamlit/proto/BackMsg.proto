@@ -49,5 +49,11 @@ message BackMsg {
 
     // Set to true to ask the server to close the connection
     bool close_connection = 10;
+
+    // Requests that sends the current browser URL to backend
+    // This is only sent to backend when the tab first loads and only used in st.experimental.get_query_string.
+    // Do not write other code that depends on this!
+    string store_url = 11;
+
   }
 }

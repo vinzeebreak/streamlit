@@ -65,13 +65,17 @@ message ForwardMsg {
     // A SessionEvent was emitted.
     SessionEvent session_event = 10;
 
+    // Tells the browser to update the query string in the URL shown in its address bar.
+    // This is only used in st.experimental.set_query_string. Do not write code that depends on this!
+    string set_query_string = 11;
+
     // Other messages.
 
     // A reference to a ForwardMsg that has already been delivered.
     // The client should substitute the message with the given hash
     // for this one. If the client does not have the referenced message
     // in its cache, it can retrieve it from the server.
-    string ref_hash = 11;
+    string ref_hash = 12;
   }
 }
 

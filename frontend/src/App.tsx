@@ -270,6 +270,8 @@ export class App extends PureComponent<Props, State> {
         uploadReportProgress: (progress: string | number) =>
           this.handleUploadReportProgress(progress),
         reportUploaded: (url: string) => this.handleReportUploaded(url),
+        setQueryString: (query_string: string) =>
+          this.handleUpdateQueryString(query_string),
       })
     } catch (err) {
       logError(err)
@@ -349,6 +351,16 @@ export class App extends PureComponent<Props, State> {
     })
 
     this.handleSessionStateChanged(sessionState)
+
+    // send current URL to server
+    this.sendCurrentUrlToServer()
+  }
+
+  // This is only used in st.experimental_get_query_string
+  sendCurrentUrlToServer = (): void => {
+    const backMsg = new BackMsg({ storeUrl: window.location.href })
+    backMsg.type = "storeUrl"
+    this.sendBackMsg(backMsg)
   }
 
   /**
@@ -465,6 +477,15 @@ export class App extends PureComponent<Props, State> {
     } else {
       this.clearAppState(newReportHash, reportId, reportName)
     }
+  }
+
+  /**
+   * Handler for ForwardMsg.query_string messages
+   * This is only used in st.experimental_set_query_string
+   * @param query_string string
+   */
+  handleUpdateQueryString = (query_string: string): void => {
+    window.history.pushState({}, "", query_string ? "?" + query_string : "/")
   }
 
   /**

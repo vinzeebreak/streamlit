@@ -21,6 +21,7 @@ import traceback
 import click
 from enum import Enum
 from typing import Any, Dict, Optional, TYPE_CHECKING
+from urllib.parse import urlsplit, parse_qs
 
 import tornado.concurrent
 import tornado.gen
@@ -667,6 +668,14 @@ class _BrowserWebSocketHandler(tornado.websocket.WebSocketHandler):
                         "Client tried to close connection when "
                         "not in development mode"
                     )
+            elif msg_type == "store_url":
+                query = urlsplit(msg.store_url).query
+                params = parse_qs(query)
+                self._session.query_string = params if params else {}
+                LOGGER.debug(
+                    "Successfully set query string upon initialization :\n%s",
+                    self._session.query_string,
+                )
             else:
                 LOGGER.warning('No handler for "%s"', msg_type)
 
